@@ -75,12 +75,18 @@ class App {
   #map;
   #mapEvent;
   #workouts = [];
+  #mapZoomLevel = 15;
 
   constructor() {
     this._getPosition();
-    form.addEventListener('submit', this._newWorkout.bind(this));
 
+    //Get data from local storage
+    this._getLocalStorage();
+
+    //Event Handlers
+    form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
+    containerWorkouts.addEventListener('click', this._moveToMarker.bind(this));
   }
 
   _getPosition() {
@@ -98,7 +104,7 @@ class App {
     const coords = [latitude, longitude];
 
     //Using Leaflet api
-    this.#map = L.map('map').setView(coords, 13);
+    this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
 
     L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
       attribution:
@@ -106,6 +112,7 @@ class App {
     }).addTo(this.#map);
 
     this.#map.on('click', this._showForm.bind(this));
+    this.#workouts.forEach(workout => this._renderWorkoutMarker(workout));
   }
   _showForm(mapE) {
     this.#mapEvent = mapE;
@@ -178,6 +185,9 @@ class App {
     this._renderWorkout(workout);
     //Hide form and Clear form inputs
     this._hideForm();
+
+    //Set local storage
+    this._setLocalStorage();
   }
 
   _renderWorkoutMarker(workout) {
@@ -248,5 +258,42 @@ class App {
     }
     form.insertAdjacentHTML('afterend', html);
   }
+
+  _moveToMarker(e) {
+    const workoutEl = e.target.closest('.workout');
+    if (!workoutEl) return;
+    const workout = this.#workouts.find(
+      workout => workout.id === workoutEl.dataset.id
+    );
+    this.#map.setView(workout.coords, this.#mapZoomLevel, {
+      animate: true,
+      pan: {
+        duration: 1,
+      },
+    });
+  }
+
+  _getLocalStorage() {
+    const data = JSON.parse(localStorage.getItem('workouts'));
+    if (!data) return;
+    this.#workouts = data;
+    this.#workouts.forEach(workout => this._renderWorkout(workout));
+  }
+  _setLocalStorage() {
+    localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+  }
+
+  reset() {
+    localStorage.removeItem('workouts');
+    location.reload();
+  }
 }
 const app = new App();
+
+//TODOS ideas
+
+//edit a workout
+//delete workout
+//delete all containerWorkoutssort containerWorkouts
+//rebuild Running and Cycling obj coming from Local Storage
+//more realistic error and confirm messages
